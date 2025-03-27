@@ -1,5 +1,6 @@
 const authRoute = require('express').Router()
 const { regController, loginController, logoutController, verifyController, forgotPassController, updatePassController } = require('../controller/auth.controller')
+const authMiddleware = require('../middleware/auth')
 
 // register
 authRoute.post(`/register`, regController)
@@ -11,7 +12,7 @@ authRoute.post(`/login`, loginController)
 authRoute.get(`/logout`, logoutController)
 
 // verify user token
-authRoute.get(`/verify`, verifyController)
+authRoute.get(`/verify`, authMiddleware, verifyController)
 
 // generate otp token
 authRoute.post(`/forgot/password`, forgotPassController)

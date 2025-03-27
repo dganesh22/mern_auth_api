@@ -2,6 +2,7 @@ const express = require('express')
 const { StatusCodes } = require('http-status-codes')
 require('dotenv').config()
 const connectDb = require('./db/db-connect')
+const cookieParser = require('cookie-parser')
 
 const PORT = process.env.PORT
 
@@ -14,6 +15,8 @@ app.use(cors({
     origin: "*",
     methods: "GET, POST, PUT, PATCH, DELETE"
 }))
+
+app.use(cookieParser(process.env.SECRET_KEY))
 
 app.use(express.urlencoded({ extended: true }))
 app.use(express.json())

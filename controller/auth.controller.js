@@ -1,6 +1,8 @@
 const { StatusCodes } = require("http-status-codes")
 const UserModel = require('../model/user')
 const bcrypt = require('bcryptjs')
+const mailHandler = require('../config/mail')
+const generateToken = require('../util/token')
 
 // register
 const  regController = async (req,res) => {
@@ -23,7 +25,33 @@ const  regController = async (req,res) => {
             password: hashPass
         })
 
+        let temp = `<div>
+                        <h4>Hi ${name}, Thank you for registerting in our portal.</h4>
+                        <table>
+                            <tr>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Mobile</th>
+                            </tr>
+                            <tr>
+                                <td> ${name} </td>
+                                <td> ${email} </td>
+                                <td> ${mobile} </td>
+                            </tr>
+                        </table>
+                        <hr>
+
+                        <h5>Regards,</h5>
+                        <p> Team Auth API.</p>
+                    </div>`
+
+        await mailHandler(email,"User Registration",temp)
+            .then(out => {
         res.status(StatusCodes.ACCEPTED).json({ msg: "user registered successfully", user: newUser })
+            }).catch(err => {
+                return res.status(StatusCodes.CONFLICT).json({ msg: err.message })
+            })
+
     } catch (err) {
         return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ msg: err.message })
     }
@@ -31,7 +59,31 @@ const  regController = async (req,res) => {
 // login
 const  loginController = async (req,res) => {
     try {
-        res.json({ msg: "login"})
+
+        let { email, password } = req.body 
+
+        // verify the email
+        let exUser = await UserModel.findOne({email})
+            if(!exUser)
+                return res.status(StatusCodes.NOT_FOUND).json({ msg: `requested ${email} not found`})
+
+        // compare the password
+        let verifyPass = await bcrypt.compare(password,exUser.password)
+            if(!verifyPass)
+                return res.status(StatusCodes.UNAUTHORIZED).json({ msg: `Passwords are not matched..`})
+
+        // login token
+        let token = await generateToken(exUser._id)
+
+        // cookies
+        res.cookie("login_token", token, {
+            httpOnly: true,
+            signed: true,
+            path: `/`,
+            maxAge: 1 * 24 * 60 * 60 * 1000
+        })
+        
+        res.json({ msg: "login successful", token })
     } catch (err) {
         return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ msg: err.message })
     }
@@ -39,7 +91,9 @@ const  loginController = async (req,res) => {
 // logout
 const  logoutController = async (req,res) => {
     try {
-        res.json({ msg: "logout"})
+        res.clearCookie("login_token", { path: "/"})
+
+        res.json({ msg: "logout successful"})
     } catch (err) {
         return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ msg: err.message })
     }
@@ -47,7 +101,15 @@ const  logoutController = async (req,res) => {
 // verify
 const  verifyController = async (req,res) => {
     try {
-        res.json({ msg: "verify"})
+        let id = req.userId 
+
+        // verify the user
+        let exUser = await UserModel.findById({_id: id }).select("-password")
+            if(!exUser)
+                return res.status(StatusCodes.NOT_FOUND).json({ msg: `request user id not found..`})
+        
+
+        res.json({ msg: "verified successful", user: exUser })
     } catch (err) {
         return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ msg: err.message })
     }
