@@ -28,6 +28,10 @@ const UserSchema = new mongoose.Schema({
         enum: ["user", "admin"],
         default: "user"
     },
+    otp: {
+        type: Number,
+        default: 0
+    },
     isActive: {
         type: Boolean,
         default: true
